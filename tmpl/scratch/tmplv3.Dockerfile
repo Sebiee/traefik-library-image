@@ -1,4 +1,4 @@
-FROM ghcr.io/sebiee/traefik:${VERSION}-alpine AS alpine-source
+FROM sebiee/traefik:${VERSION}-alpine AS alpine-source
 FROM scratch
 COPY --from=alpine-source /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=alpine-source /usr/share/zoneinfo /usr/share/
