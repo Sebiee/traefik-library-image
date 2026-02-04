@@ -12,8 +12,9 @@ on:
         type: string
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/traefik
+  GHCR_REGISTRY: ghcr.io
+  DOCKERHUB_IMAGE: sebiee/traefik
+  GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/traefik
 
 jobs:
   build-alpine:
@@ -57,9 +58,15 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract platform name for tag
         id: platform
@@ -76,7 +83,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-alpine-${{ steps.platform.outputs.tag }}
+            ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-alpine-${{ steps.platform.outputs.tag }}
+            ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-alpine-${{ steps.platform.outputs.tag }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ env.VERSION }}
@@ -101,16 +109,29 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create and push Alpine manifest
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and push Alpine manifest (GHCR)
         run: |
-          docker manifest create ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-alpine \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-alpine-linux-amd64 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-alpine-linux-arm64
-          docker manifest push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-alpine
+          docker manifest create ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-alpine \
+            ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-alpine-linux-amd64 \
+            ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-alpine-linux-arm64
+          docker manifest push ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-alpine
+
+      - name: Create and push Alpine manifest (Docker Hub)
+        run: |
+          docker manifest create ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-alpine \
+            ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-alpine-linux-amd64 \
+            ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-alpine-linux-arm64
+          docker manifest push ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-alpine
 
   build-scratch:
     name: Build Scratch Images
@@ -153,9 +174,15 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract platform name for tag
         id: platform
@@ -172,7 +199,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-${{ steps.platform.outputs.tag }}
+            ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-${{ steps.platform.outputs.tag }}
+            ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-${{ steps.platform.outputs.tag }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ env.VERSION }}
@@ -197,22 +225,40 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create and push version manifest
-        run: |
-          # Create versioned manifest (scratch-based, main tag)
-          docker manifest create ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-linux-amd64 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-linux-arm64
-          docker manifest push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Create and push latest manifest
+      - name: Create and push version manifest (GHCR)
         run: |
-          # Create latest manifest
-          docker manifest create ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-linux-amd64 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-linux-arm64
-          docker manifest push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker manifest create ${{ env.GHCR_IMAGE }}:${{ env.VERSION }} \
+            ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-linux-amd64 \
+            ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-linux-arm64
+          docker manifest push ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}
+
+      - name: Create and push version manifest (Docker Hub)
+        run: |
+          docker manifest create ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }} \
+            ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-linux-amd64 \
+            ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-linux-arm64
+          docker manifest push ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}
+
+      - name: Create and push latest manifest (GHCR)
+        run: |
+          docker manifest create ${{ env.GHCR_IMAGE }}:latest \
+            ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-linux-amd64 \
+            ${{ env.GHCR_IMAGE }}:${{ env.VERSION }}-linux-arm64
+          docker manifest push ${{ env.GHCR_IMAGE }}:latest
+
+      - name: Create and push latest manifest (Docker Hub)
+        run: |
+          docker manifest create ${{ env.DOCKERHUB_IMAGE }}:latest \
+            ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-linux-amd64 \
+            ${{ env.DOCKERHUB_IMAGE }}:${{ env.VERSION }}-linux-arm64
+          docker manifest push ${{ env.DOCKERHUB_IMAGE }}:latest
