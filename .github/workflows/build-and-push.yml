@@ -12,7 +12,7 @@ on:
         type: string
 
 env:
-  DOCKERHUB_IMAGE: sebiee/traefik
+  DOCKERHUB_IMAGE: sebieee/traefik
   GHCR_IMAGE: ghcr.io/sebiee/traefik
 
 jobs:
